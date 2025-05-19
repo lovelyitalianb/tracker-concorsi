@@ -5,227 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tracker per concorsi</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#804b66" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f8f4f7;
+      font-family: sans-serif;
+      background: #fff;
+      padding: 1rem;
       color: #333;
-      margin: 0;
-      padding: 0;
     }
-    header {
-      background-color: #804b66;
-      color: white;
-      padding: 1rem;
+
+    h1 {
+      color: #804b66;
+      font-size: 1.8rem;
       text-align: center;
-      font-size: 1.5rem;
-    }
-    main {
-      padding: 1rem;
-    }
-    .concorso {
-      background: white;
-      border: 1px solid #ddd;
-      border-left: 5px solid #804b66;
       margin-bottom: 1rem;
-      padding: 1rem;
-      border-radius: 8px;
-      position: relative;
     }
-    .concorso h3 {
-      margin: 0;
-      font-size: 1.2rem;
+
+    form {
+      margin-bottom: 1rem;
     }
-    .frequenza {
-      font-size: 0.9rem;
-      color: #666;
-    }
-    .check {
-      margin-top: 0.5rem;
-    }
-    .btn {
-      background-color: #804b66;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 1rem;
-    }
-    .btn:hover {
-      background-color: #6a3c56;
-    }
-    #addForm {
-      margin-bottom: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    input, select {
+
+    input, select, button {
       padding: 0.5rem;
-      font-size: 1rem;
+      margin-right: 0.5rem;
       border: 1px solid #ccc;
       border-radius: 6px;
     }
-    .delete-btn {
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      background: #eee;
+
+    button {
+      background: #804b66;
+      color: white;
       border: none;
-      font-size: 1rem;
-      color: #804b66;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
       cursor: pointer;
     }
-    .delete-btn:hover {
-      background: #f0dbe4;
+
+    .contest {
+      background: #f7f3f5;
+      border-left: 5px solid #804b66;
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      position: relative;
+    }
+
+    .contest input[type="checkbox"] {
+      margin-right: 0.5rem;
+    }
+
+    .contest small {
+      display: block;
+      color: #666;
+      margin-top: 0.3rem;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: #804b66;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    a {
+      color: #804b66;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <header>Tracker per concorsi</header>
-  <main>
-    <form id="addForm">
-      <input type="text" id="nome" placeholder="Nome concorso" required />
-      <select id="frequenza">
-        <option value="hourly">Ogni ora</option>
-        <option value="daily">Giornaliero</option>
-        <option value="weekly">Settimanale</option>
-      </select>
-      <input type="url" id="link" placeholder="Link (opzionale)" />
-      <button class="btn" type="submit">Aggiungi concorso</button>
-    </form>
+  <h1>Tracker per concorsi</h1>
 
-    <div id="listaConcorsi"></div>
-  </main>
+  <form id="addContestForm">
+    <input type="text" id="contestName" placeholder="Nome concorso" required />
+    <select id="interval">
+      <option value="hourly">Ogni ora</option>
+      <option value="daily">Ogni giorno</option>
+      <option value="weekly">Ogni settimana</option>
+    </select>
+    <input type="url" id="contestUrl" placeholder="Link concorso (facoltativo)" />
+    <button type="submit">Aggiungi concorso</button>
+  </form>
+
+  <div id="contestList"></div>
 
   <script>
-    const lista = document.getElementById("listaConcorsi");
-    const concorsi = JSON.parse(localStorage.getItem("concorsi")) || [];
+    const form = document.getElementById("addContestForm");
+    const contestList = document.getElementById("contestList");
 
-    function salva() {
-      localStorage.setItem("concorsi", JSON.stringify(concorsi));
-    }
+    const INTERVALS = {
+      hourly: 60 * 60 * 1000,
+      daily: 24 * 60 * 60 * 1000,
+      weekly: 7 * 24 * 60 * 60 * 1000,
+    };
 
-    function creaElemento(concorso, index) {
-      const box = document.createElement("div");
-      box.className = "concorso";
+    let contests = JSON.parse(localStorage.getItem("contests") || "[]");
 
-      const titolo = document.createElement("h3");
-      titolo.textContent = concorso.nome;
-      box.appendChild(titolo);
+    function renderContests() {
+      contestList.innerHTML = "";
+      contests.forEach((c, index) => {
+        const container = document.createElement("div");
+        container.className = "contest";
 
-      const frequenza = document.createElement("div");
-      frequenza.className = "frequenza";
-      frequenza.textContent = `Frequenza: ${{
-        hourly: "ogni ora",
-        daily: "giornaliero",
-        weekly: "settimanale"
-      }[concorso.frequenza]}`;
-      box.appendChild(frequenza);
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = c.checked;
 
-      if (concorso.link) {
-        const link = document.createElement("a");
-        link.href = concorso.link;
-        link.target = "_blank";
-        link.textContent = "Vai al concorso";
-        link.style.display = "block";
-        link.style.marginTop = "0.5rem";
-        link.style.color = "#804b66";
-        box.appendChild(link);
-      }
+        const label = document.createElement("label");
+        label.innerHTML = c.url
+          ? `<a href="${c.url}" target="_blank">${c.name}</a>`
+          : c.name;
 
-      const check = document.createElement("input");
-      check.type = "checkbox";
-      check.className = "check";
-      check.checked = concorso.checked || false;
-      check.addEventListener("change", () => {
-        concorsi[index].checked = check.checked;
-        concorsi[index].lastChecked = new Date().toISOString();
-        salva();
+        const timeInfo = document.createElement("small");
+        timeInfo.textContent = c.lastChecked ? `Ultima partecipazione: ${new Date(c.lastChecked).toLocaleTimeString()}` : "";
+
+        checkbox.addEventListener("change", () => {
+          c.checked = checkbox.checked;
+          c.lastChecked = c.checked ? Date.now() : null;
+          localStorage.setItem("contests", JSON.stringify(contests));
+          renderContests();
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.textContent = "✕";
+        deleteBtn.onclick = () => {
+          contests.splice(index, 1);
+          localStorage.setItem("contests", JSON.stringify(contests));
+          renderContests();
+        };
+
+        container.appendChild(checkbox);
+        container.appendChild(label);
+        container.appendChild(timeInfo);
+        container.appendChild(deleteBtn);
+
+        contestList.appendChild(container);
       });
-      box.appendChild(check);
+    }
 
-      const elimina = document.createElement("button");
-      elimina.className = "delete-btn";
-      elimina.innerHTML = "×";
-      elimina.addEventListener("click", () => {
-        concorsi.splice(index, 1);
-        salva();
-        render();
+    function checkResets() {
+      const now = Date.now();
+      contests.forEach((c) => {
+        const last = c.lastChecked || 0;
+        const interval = INTERVALS[c.interval] || INTERVALS.daily;
+        if (now - last >= interval) {
+          c.checked = false;
+        }
       });
-      box.appendChild(elimina);
-
-      lista.appendChild(box);
+      localStorage.setItem("contests", JSON.stringify(contests));
+      renderContests();
     }
 
-    function render() {
-      lista.innerHTML = "";
-      concorsi.forEach((c, i) => creaElemento(c, i));
-    }
-
-    document.getElementById("addForm").addEventListener("submit", (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const nome = document.getElementById("nome").value.trim();
-      const frequenza = document.getElementById("frequenza").value;
-      const link = document.getElementById("link").value.trim();
-
-      if (!nome) return;
-
-      concorsi.push({ nome, frequenza, link, checked: false });
-      salva();
-      render();
-      e.target.reset();
+      const name = document.getElementById("contestName").value.trim();
+      const interval = document.getElementById("interval").value;
+      const url = document.getElementById("contestUrl").value.trim();
+      if (name) {
+        contests.push({ name, interval, url, checked: false, lastChecked: null });
+        localStorage.setItem("contests", JSON.stringify(contests));
+        form.reset();
+        renderContests();
+      }
     });
 
-    function resetCheck() {
-      const now = new Date();
-      concorsi.forEach((c) => {
-        if (!c.lastChecked) return;
-        const last = new Date(c.lastChecked);
-        const diff = now - last;
-        const ore = diff / 1000 / 60 / 60;
-
-        if (
-          (c.frequenza === "hourly" && ore >= 1) ||
-          (c.frequenza === "daily" && ore >= 24) ||
-          (c.frequenza === "weekly" && ore >= 168)
-        ) {
-          c.checked = false;
-          c.lastChecked = null;
-        }
-      });
-      salva();
-      render();
-    }
-
-    render();
-    resetCheck();
-
-    // Notifiche
-    if ("Notification" in window && Notification.permission !== "denied") {
-      Notification.requestPermission();
-    }
-
-    function inviaNotifiche() {
-      concorsi.forEach((c) => {
-        if (!c.checked) {
-          new Notification("Puoi partecipare di nuovo a: " + c.nome);
-        }
-      });
-    }
-
-    setInterval(() => {
-      resetCheck();
-      if (Notification.permission === "granted") {
-        inviaNotifiche();
-      }
-    }, 60000); // ogni minuto
+    renderContests();
+    checkResets();
+    setInterval(checkResets, 60000); // controllo ogni minuto
   </script>
 </body>
 </html>
