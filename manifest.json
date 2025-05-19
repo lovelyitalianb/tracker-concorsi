@@ -1,6 +1,6 @@
 {
   "name": "Tracker per concorsi",
-  "short_name": "Concorsi",
+  "short_name": "Tracker concorsi",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
