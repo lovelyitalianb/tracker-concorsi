@@ -101,7 +101,9 @@
       <button class="btn" type="submit">Aggiungi concorso</button>
     </form>
 
+    <button class="btn" id="testNotifica">Test Notifica</button>
     <div id="listaConcorsi"></div>
+    
   </main>
 
   <script>
@@ -239,6 +241,21 @@
         inviaNotifiche();
       }
     }, 60000); // ogni minuto
+
+    document.getElementById("testNotifica").addEventListener("click", () => {
+  if (Notification.permission === "granted") {
+    new Notification("Test notifica funzionante!");
+  } else {
+    Notification.requestPermission().then((perm) => {
+      if (perm === "granted") {
+        new Notification("Test notifica funzionante!");
+      } else {
+        alert("Le notifiche non sono abilitate.");
+      }
+    });
+  }
+});
+    
     if ("serviceWorker" in navigator && "periodicSync" in navigator.serviceWorker) {
   navigator.serviceWorker.register("sw.js").then(async (registration) => {
     try {
@@ -250,6 +267,7 @@
     }
   });
     }
+    
   </script>
 </body>
 </html>
