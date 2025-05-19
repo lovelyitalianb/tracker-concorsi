@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracker per concorsi</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#804b66" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f4f7;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #804b66;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    main {
+      padding: 1rem;
+    }
+    .concorso {
+      background: white;
+      border: 1px solid #ddd;
+      border-left: 5px solid #804b66;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      position: relative;
+    }
+    .concorso h3 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    .frequenza {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .check {
+      margin-top: 0.5rem;
+    }
+    .btn {
+      background-color: #804b66;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    .btn:hover {
+      background-color: #6a3c56;
+    }
+    #addForm {
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    input, select {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: #eee;
+      border: none;
+      font-size: 1rem;
+      color: #804b66;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+    }
+    .delete-btn:hover {
+      background: #f0dbe4;
+    }
+  </style>
+</head>
+<body>
+  <header>Tracker per concorsi</header>
+  <main>
+    <form id="addForm">
+      <input type="text" id="nome" placeholder="Nome concorso" required />
+      <select id="frequenza">
+        <option value="hourly">Ogni ora</option>
+        <option value="daily">Giornaliero</option>
+        <option value="weekly">Settimanale</option>
+      </select>
+      <input type="url" id="link" placeholder="Link (opzionale)" />
+      <button class="btn" type="submit">Aggiungi concorso</button>
+    </form>
+
+    <div id="listaConcorsi"></div>
+  </main>
+
+  <script>
+    const lista = document.getElementById("listaConcorsi");
+    const concorsi = JSON.parse(localStorage.getItem("concorsi")) || [];
+
+    function salva() {
+      localStorage.setItem("concorsi", JSON.stringify(concorsi));
+    }
+
+    function creaElemento(concorso, index) {
+      const box = document.createElement("div");
+      box.className = "concorso";
+
+      const titolo = document.createElement("h3");
+      titolo.textContent = concorso.nome;
+      box.appendChild(titolo);
+
+      const frequenza = document.createElement("div");
+      frequenza.className = "frequenza";
+      frequenza.textContent = `Frequenza: ${{
+        hourly: "ogni ora",
+        daily: "giornaliero",
+        weekly: "settimanale"
+      }[concorso.frequenza]}`;
+      box.appendChild(frequenza);
+
+      if (concorso.link) {
+        const link = document.createElement("a");
+        link.href = concorso.link;
+        link.target = "_blank";
+        link.textContent = "Vai al concorso";
+        link.style.display = "block";
+        link.style.marginTop = "0.5rem";
+        link.style.color = "#804b66";
+        box.appendChild(link);
+      }
+
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "check";
+      check.checked = concorso.checked || false;
+      check.addEventListener("change", () => {
+        concorsi[index].checked = check.checked;
+        concorsi[index].lastChecked = new Date().toISOString();
+        salva();
+      });
+      box.appendChild(check);
+
+      const elimina = document.createElement("button");
+      elimina.className = "delete-btn";
+      elimina.innerHTML = "×";
+      elimina.addEventListener("click", () => {
+        concorsi.splice(index, 1);
+        salva();
+        render();
+      });
+      box.appendChild(elimina);
+
+      lista.appendChild(box);
+    }
+
+    function render() {
+      lista.innerHTML = "";
+      concorsi.forEach((c, i) => creaElemento(c, i));
+    }
+
+    document.getElementById("addForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const nome = document.getElementById("nome").value.trim();
+      const frequenza = document.getElementById("frequenza").value;
+      const link = document.getElementById("link").value.trim();
+
+      if (!nome) return;
+
+      concorsi.push({ nome, frequenza, link, checked: false });
+      salva();
+      render();
+      e.target.reset();
+    });
+
+    function resetCheck() {
+      const now = new Date();
+      concorsi.forEach((c) => {
+        if (!c.lastChecked) return;
+        const last = new Date(c.lastChecked);
+        const diff = now - last;
+        const ore = diff / 1000 / 60 / 60;
+
+        if (
+          (c.frequenza === "hourly" && ore >= 1) ||
+          (c.frequenza === "daily" && ore >= 24) ||
+          (c.frequenza === "weekly" && ore >= 168)
+        ) {
+          c.checked = false;
+          c.lastChecked = null;
+        }
+      });
+      salva();
+      render();
+    }
+
+    render();
+    resetCheck();
+
+    // Notifiche
+    if ("Notification" in window && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+
+    function inviaNotifiche() {
+      concorsi.forEach((c) => {
+        if (!c.checked) {
+          new Notification("Puoi partecipare di nuovo a: " + c.nome);
+        }
+      });
+    }
+
+    setInterval(() => {
+      resetCheck();
+      if (Notification.permission === "granted") {
+        inviaNotifiche();
+      }
+    }, 60000); // ogni minuto
+  </script>
+</body>
+</html>
