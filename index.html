@@ -109,8 +109,11 @@
     const concorsi = JSON.parse(localStorage.getItem("concorsi")) || [];
 
     function salva() {
-      localStorage.setItem("concorsi", JSON.stringify(concorsi));
-    }
+  localStorage.setItem("concorsi", JSON.stringify(concorsi));
+  caches.open("concorsi").then((cache) => {
+    cache.put("/concorsi", new Response(JSON.stringify(concorsi)));
+  });
+}
 
     function creaElemento(concorso, index) {
       const box = document.createElement("div");
@@ -236,6 +239,17 @@
         inviaNotifiche();
       }
     }, 60000); // ogni minuto
+    if ("serviceWorker" in navigator && "periodicSync" in navigator.serviceWorker) {
+  navigator.serviceWorker.register("sw.js").then(async (registration) => {
+    try {
+      await registration.periodicSync.register("notifiche-concorsi", {
+        minInterval: 60 * 60 * 1000, // ogni ora
+      });
+    } catch (e) {
+      console.error("Periodic Sync non supportato", e);
+    }
+  });
+    }
   </script>
 </body>
 </html>
